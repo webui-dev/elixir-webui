@@ -1,7 +1,7 @@
 defmodule WebUI.MixProject do
   use Mix.Project
 
-  @version "0.1.0"
+  @version "2.5.1"
   @source_url "https://github.com/webui-dev/elixir-webui"
 
   def project do
