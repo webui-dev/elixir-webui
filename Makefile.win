@@ -1,0 +1,86 @@
+# Builds the WebUI NIF on Windows with MSVC (nmake). Linux and macOS use Makefile.
+#
+# WebUI is linked statically, so priv\webui_nif.dll is self-contained -- there
+# is no webui-2.dll to locate at runtime, which is the whole reason this route
+# was chosen over dynamic linking on Windows.
+#
+# No erl_nif import library is linked, and none is needed: on Windows erl_nif.h
+# routes every enif_* call through the WinDynNifCallbacks function-pointer
+# table, which the emulator fills in when it calls nif_init. Nothing to resolve
+# at link time.
+#
+# webui-2-static.lib is MSVC-built (the release CI runs nmake with
+# WEBUI_WEBVIEW_STATIC=1), so this must be built from a Developer Command
+# Prompt. That same flag means lib.exe has already merged WebView2LoaderStatic
+# into the archive, so it is not listed here.
+#
+# Driven by `mix compile` via elixir_make. To build against a local WebUI
+# checkout rather than the bootstrapped one:
+#
+#   set WEBUI_DIR=C:\path\to\webui\dist
+#   set WEBUI_INCLUDE=C:\path\to\webui\include
+#   mix compile
+
+!IFNDEF MIX_APP_PATH
+MIX_APP_PATH = .
+!ENDIF
+
+PRIV_DIR = $(MIX_APP_PATH)\priv
+NIF = $(PRIV_DIR)\webui_nif.dll
+
+!IF "$(WEBUI_DIR)" == ""
+WEBUI_LIB_DIR = webui-windows-msvc-x64
+!ELSE
+WEBUI_LIB_DIR = $(WEBUI_DIR)
+!ENDIF
+
+!IF "$(WEBUI_INCLUDE)" == ""
+WEBUI_INCLUDE_DIR = $(WEBUI_LIB_DIR)
+!ELSE
+WEBUI_INCLUDE_DIR = $(WEBUI_INCLUDE)
+!ENDIF
+
+WEBUI_STATIC = $(WEBUI_LIB_DIR)\webui-2-static.lib
+
+SOURCES = c_src\webui_nif.c
+OBJ_DIR = $(MIX_APP_PATH)\obj
+
+CFLAGS = /nologo /O2 /W3 /MD /D_CRT_SECURE_NO_WARNINGS \
+	/I"$(ERTS_INCLUDE_DIR)" /I"$(WEBUI_INCLUDE_DIR)"
+
+# ws2_32/ole32 are WebUI's own (see the dynamic link line in webui's Makefile);
+# the rest back the Win32 and WebView2 paths. msvcprt matches /MD and supplies
+# the C++ runtime for win32_wv2.obj, which is compiled /Zl and so carries no
+# default-library directive of its own.
+SYSLIBS = ws2_32.lib ole32.lib oleaut32.lib user32.lib shell32.lib \
+	advapi32.lib gdi32.lib version.lib msvcprt.lib
+
+all: $(NIF)
+
+# Depending on the static library, not just the C source, matters now that
+# bootstrap defaults to nightly: re-bootstrapping must relink the NIF.
+$(NIF): $(SOURCES) $(WEBUI_STATIC)
+	@if not exist "$(PRIV_DIR)" mkdir "$(PRIV_DIR)"
+	@if not exist "$(OBJ_DIR)" mkdir "$(OBJ_DIR)"
+	@REM /IMPLIB keeps the import library (and its .exp) that MSVC emits for any
+	@REM DLL with exports out of priv/. The NIF is loaded dynamically, so this
+	@REM byproduct is never used -- priv/ should hold only webui_nif.dll.
+	cl $(CFLAGS) /LD $(SOURCES) /Fo"$(OBJ_DIR)\\" /Fe:"$(NIF)" \
+		/link "$(WEBUI_STATIC)" $(SYSLIBS) /IMPLIB:"$(OBJ_DIR)\webui_nif.lib"
+
+$(WEBUI_STATIC):
+	@echo.
+	@echo WebUI static library not found at $(WEBUI_STATIC)
+	@echo.
+	@echo Fetch it with:
+	@echo     bootstrap.bat
+	@echo.
+	@echo Or point the build at a local WebUI checkout:
+	@echo     set WEBUI_DIR=C:\path\to\webui\dist
+	@echo     set WEBUI_INCLUDE=C:\path\to\webui\include
+	@echo.
+	@exit 1
+
+clean:
+	@if exist "$(NIF)" del /Q "$(NIF)"
+	@if exist "$(OBJ_DIR)" rmdir /S /Q "$(OBJ_DIR)"
