@@ -5,6 +5,8 @@ Use any web browser or WebView as GUI, with Elixir in the backend and modern web
 > [!NOTE]
 > This binding is under development and has not yet been published to Hex.
 
+![Screenshot](https://raw.githubusercontent.com/webui-dev/webui-logo/main/screenshot.png)
+
 ## Why
 
 [WebUI](https://webui.me) drives a browser you already have installed instead of
