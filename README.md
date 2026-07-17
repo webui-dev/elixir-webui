@@ -1,4 +1,4 @@
-# elixir-webui
+# Elixir WebUI
 
 Use any web browser or WebView as GUI, with Elixir in the backend and modern web technologies in the frontend, all in a lightweight portable library.
 
@@ -47,17 +47,6 @@ bash bootstrap.sh      # Linux / macOS   (bootstrap.bat on Windows)
 mix deps.get
 mix compile
 ```
-
-Bootstrap tracks WebUI's **nightly** build by default. To pin a tagged release:
-
-```sh
-WEBUI_VERSION=2.5.0-beta.3 bash bootstrap.sh      # Linux / macOS
-set WEBUI_VERSION=2.5.0-beta.3 && bootstrap.bat   # Windows
-```
-
-`webui.h` is always taken from the same archive as the library, so the two
-cannot drift apart. Re-running bootstrap relinks the NIF on the next
-`mix compile`.
 
 WebUI is linked **statically** into the NIF, so there is no `webui-2.dll` /
 `libwebui-2.so` to ship or locate at runtime — `priv/webui_nif.*` is
@@ -135,34 +124,6 @@ WebUI.bind(win, "", fn
   _ -> :ok
 end)
 ```
-
-## How it works
-
-WebUI runs bound-element callbacks on its own threads, which cannot run Elixir.
-The C shim therefore does nothing but `enif_send` the event to a process and
-return; WebUI is configured with `asynchronous_response` so it waits for an
-explicit answer rather than the C callback's return value. `WebUI.Dispatcher`
-receives the message, runs your function in a supervised task, and sends the
-result back.
-
-Two consequences worth knowing:
-
-- **Handlers run in parallel** and may block freely. A handler can call
-  `script/3` and wait on the browser without stalling other events.
-- **A crashing handler is contained.** It is logged, the Promise resolves to
-  `""`, and the dispatcher survives.
-
-Blocking C calls (`wait/0`, `show/2`, `script/3`) run on dirty schedulers, so
-they block only the calling process, never the VM.
-
-## Known limitations
-
-- **WebView mode does not work on macOS.** `show_wv/2` needs its event loop on
-  the process's main thread, which belongs to the BEAM and cannot be borrowed
-  by a NIF. Windows and Linux are fine. `show/2` is unaffected everywhere.
-- **`script/3` is single-client only**, as in the C API.
-- Because WebUI is linked into the VM's process, a fault in the C library takes
-  the VM with it. This matches every other WebUI binding.
 
 ## Examples
 
