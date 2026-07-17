@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <script src="webui.js"></script>
+    <title>Serve a Folder</title>
+    <style>
+      body {
+        font-family: 'Arial', sans-serif;
+        color: white;
+        background: linear-gradient(to right, #507d91, #1c596f, #022737);
+        text-align: center;
+        font-size: 18px;
+      }
+      button {
+        padding: 10px;
+        margin: 10px;
+        border-radius: 3px;
+        border: 1px solid #ccc;
+        background: #3498db;
+        color: #fff;
+        cursor: pointer;
+        font-size: 16px;
+      }
+      button:hover { background: #c9913d; }
+      h1 { text-shadow: -7px 10px 7px rgb(67 57 57 / 76%); }
+      a { color: #9fd3e8; }
+    </style>
+  </head>
+  <body>
+    <h1>WebUI - Serve a Folder</h1>
+    <p>This page is served from disk, not from an inline string.</p>
+    <p><a href="second.html">Go to the second page</a></p>
+    <button onclick="exit_app();">Exit</button>
+  </body>
+</html>
